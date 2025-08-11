@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Order Processing Demo</title>
+    <style>
+        body {
+            background: #f7f7fa;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 420px;
+            margin: 40px auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+            padding: 32px 24px 24px 24px;
+        }
+        h1, h2 {
+            text-align: center;
+            color: #333;
+        }
+        label {
+            display: block;
+            margin: 16px 0 6px 0;
+            color: #222;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            font-size: 1em;
+        }
+        button {
+            background: #4f8cff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            font-size: 1em;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        button[disabled] {
+            background: #aaa;
+            cursor: not-allowed;
+        }
+        .item-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+        .item-row input {
+            flex: 1 1 0;
+        }
+        .item-row button {
+            background: #e74c3c;
+            padding: 0 8px;
+            font-size: 1em;
+        }
+        .result, .status, .cancel-result {
+            background: #f4f8ff;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 0.97em;
+            color: #222;
+            word-break: break-all;
+        }
+        .actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Order Processing System</h1>
+
+        <h2>Create Order</h2>
+        <form id="createOrderForm">
+            <label>Customer ID:
+                <input type="text" id="customerId" required />
+            </label>
+            <div id="itemsList">
+                <b>Items:</b>
+            </div>
+            <button type="button" onclick="addItem()">Add Item</button>
+            <div class="actions">
+                <button type="submit">Create Order</button>
+            </div>
+        </form>
+        <div id="createOrderResult" class="result"></div>
+
+        <h2>Check Order Status</h2>
+        <form id="checkStatusForm">
+            <label>Order ID:
+                <input type="text" id="orderId" required />
+            </label>
+            <div class="actions">
+                <button type="submit">Check Status</button>
+                <button id="cancelOrderBtn" type="button" style="display:none;background:#e67e22;">Cancel Order</button>
+            </div>
+        </form>
+        <div id="orderStatusResult" class="status"></div>
+        <div id="cancelOrderResult" class="cancel-result"></div>
+    </div>
+    <script>
+    function addItem() {
+        const div = document.createElement('div');
+        div.className = 'item-row';
+        div.innerHTML = `
+            <input type='text' name='productId' placeholder='Product ID' required>
+            <input type='text' name='name' placeholder='Name' required>
+            <input type='number' name='price' placeholder='Price' required step='0.01'>
+            <input type='number' name='quantity' placeholder='Qty' required min='1' value='1'>
+            <button type='button' title='Remove' onclick='this.parentNode.remove()'>&times;</button>
+        `;
+        document.getElementById('itemsList').appendChild(div);
+    }
+
+    document.getElementById('createOrderForm').onsubmit = async function(e) {
+        e.preventDefault();
+        const customerId = document.getElementById('customerId').value;
+        const items = [];
+        const itemsDivs = document.getElementById('itemsList').querySelectorAll('.item-row');
+        for (const div of itemsDivs) {
+            const productId = div.querySelector("input[name='productId']").value;
+            const name = div.querySelector("input[name='name']").value;
+            const price = parseFloat(div.querySelector("input[name='price']").value);
+            const quantity = parseInt(div.querySelector("input[name='quantity']").value);
+            items.push({ productId, name, price, quantity });
+        }
+        if (items.length === 0) {
+            document.getElementById('createOrderResult').textContent = 'Add at least one item.';
+            return;
+        }
+        const res = await fetch('/api/orders/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ customerId, items })
+        });
+        const data = await res.json();
+        document.getElementById('createOrderResult').textContent = JSON.stringify(data, null, 2);
+        if (data.orderId) {
+            document.getElementById('orderId').value = data.orderId;
+        }
+    };
+
+    document.getElementById('checkStatusForm').onsubmit = async function(e) {
+        e.preventDefault();
+        const orderId = document.getElementById('orderId').value;
+        if (!orderId) return;
+        const res = await fetch('/api/orders/' + encodeURIComponent(orderId));
+        const data = await res.json();
+        document.getElementById('orderStatusResult').textContent = JSON.stringify(data, null, 2);
+        if (data.status && ["completed","failed","cancelled"].indexOf(data.status.toLowerCase()) === -1) {
+            document.getElementById('cancelOrderBtn').style.display = '';
+        } else {
+            document.getElementById('cancelOrderBtn').style.display = 'none';
+        }
+    };
+
+    document.getElementById('cancelOrderBtn').onclick = async function() {
+        const orderId = document.getElementById('orderId').value;
+        if (!orderId) return;
+        const res = await fetch('/api/orders/' + encodeURIComponent(orderId) + '/cancel', { method: 'POST' });
+        const data = await res.json();
+        document.getElementById('cancelOrderResult').textContent = JSON.stringify(data, null, 2);
+        document.getElementById('cancelOrderBtn').style.display = 'none';
+    };
+    </script>
+</body>
+</html>
