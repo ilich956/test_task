@@ -4,7 +4,9 @@
 
 Проект моделирует процесс обработки заказа с помощью Workflow и Activities, включает обработку ошибок, повторные попытки, логику отмены и простой web-интерфейс для взаимодействия.
 ---
-images\GitHub_README.jpg
+![cover-v5-optimized](./images/GitHub_README.jpg)
+![cover-v5-optimized](./images/GitHub_README_UI.jpg)
+
 ## Архитектура
 
 - **API** (`cmd/api/main.go`):  HTTP сервер для взаимодействия с системой.
